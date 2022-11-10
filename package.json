@@ -1,5 +1,5 @@
 {
-	"name": "preact-render-to-string",
+	"name": "@reggi/preact-async-render-to-string",
 	"amdName": "preactRenderToString",
 	"version": "5.2.6",
 	"description": "Render JSX to an HTML string, with support for Preact components.",

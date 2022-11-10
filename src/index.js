@@ -50,7 +50,7 @@ renderToString.render = renderToString;
 let shallowRender = (vnode, context) => renderToString(vnode, context, SHALLOW);
 
 const EMPTY_ARR = [];
-function renderToString(vnode, context, opts) {
+async function renderToString(vnode, context, opts) {
 	context = context || {};
 
 	// Performance optimization: `renderToString` is synchronous and we
@@ -77,7 +77,7 @@ function renderToString(vnode, context, opts) {
 	) {
 		res = _renderToStringPretty(vnode, context, opts);
 	} else {
-		res = _renderToString(vnode, context, false, undefined, parent);
+		res = await _renderToString(vnode, context, false, undefined, parent);
 	}
 
 	// options._commit, we don't schedule any effects in this library right now,
@@ -94,7 +94,7 @@ function renderToString(vnode, context, opts) {
  * @param {Record<string, unknown>} context
  * @returns {string}
  */
-function renderFunctionComponent(vnode, context) {
+async function renderFunctionComponent(vnode, context) {
 	// eslint-disable-next-line lines-around-comment
 	/** @type {string} */
 	let rendered,
@@ -116,7 +116,7 @@ function renderFunctionComponent(vnode, context) {
 		if (renderHook) renderHook(vnode);
 
 		// stateless functional components
-		rendered = vnode.type.call(c, vnode.props, cctx);
+		rendered = await vnode.type.call(c, vnode.props, cctx);
 	}
 
 	return rendered;
@@ -234,7 +234,7 @@ const assign = Object.assign;
  * @param {VNode | null} parent
  * @returns {string}
  */
-function _renderToString(vnode, context, isSvgMode, selectValue, parent) {
+async function _renderToString(vnode, context, isSvgMode, selectValue, parent) {
 	// Ignore non-rendered VNodes/values
 	if (vnode == null || vnode === true || vnode === false || vnode === '') {
 		return '';
@@ -250,13 +250,15 @@ function _renderToString(vnode, context, isSvgMode, selectValue, parent) {
 	if (isArray(vnode)) {
 		let rendered = '';
 		parent[CHILDREN] = vnode;
-		for (let i = 0; i < vnode.length; i++) {
-			rendered =
-				rendered +
-				_renderToString(vnode[i], context, isSvgMode, selectValue, parent);
 
-			vnode[i] = normalizeVNode(vnode[i]);
-		}
+    await Promise.all(vnode.map(async (v) => {
+      rendered =
+        rendered +
+         await _renderToString(vnode[i], context, isSvgMode, selectValue, parent);
+
+      vnode[i] = normalizeVNode(vnode[i]);
+    }))
+
 		return rendered;
 	}
 
@@ -279,7 +281,7 @@ function _renderToString(vnode, context, isSvgMode, selectValue, parent) {
 			if (type.prototype && typeof type.prototype.render === 'function') {
 				rendered = renderClassComponent(vnode, context);
 			} else {
-				rendered = renderFunctionComponent(vnode, context);
+				rendered = await renderFunctionComponent(vnode, context);
 			}
 
 			let component = vnode[COMPONENT];
@@ -295,7 +297,7 @@ function _renderToString(vnode, context, isSvgMode, selectValue, parent) {
 		rendered = isTopLevelFragment ? rendered.props.children : rendered;
 
 		// Recurse into children before invoking the after-diff hook
-		const str = _renderToString(
+		const str = await _renderToString(
 			rendered,
 			context,
 			isSvgMode,
@@ -396,7 +398,7 @@ function _renderToString(vnode, context, isSvgMode, selectValue, parent) {
 			if (child != null && child !== false) {
 				let childSvgMode =
 					type === 'svg' || (type !== 'foreignObject' && isSvgMode);
-				let ret = _renderToString(
+				let ret = await _renderToString(
 					child,
 					context,
 					childSvgMode,
@@ -415,7 +417,7 @@ function _renderToString(vnode, context, isSvgMode, selectValue, parent) {
 		vnode[CHILDREN] = [normalizeVNode(children)];
 		let childSvgMode =
 			type === 'svg' || (type !== 'foreignObject' && isSvgMode);
-		let ret = _renderToString(
+		let ret = await _renderToString(
 			children,
 			context,
 			childSvgMode,
